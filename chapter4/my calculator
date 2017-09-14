@@ -1,0 +1,228 @@
+#include <iostream>
+#include<math.h>
+#include<string>
+#include<string.h>
+#include<stdio.h>
+#include<stdlib.h>
+using namespace std;
+const int maxlen = 100;
+
+template <typename elementType>
+class stack {
+public:
+        stack();
+        bool empty();
+        bool full();
+        bool get_top(elementType &x);
+        bool push(elementType x);
+        bool pop();
+private:
+        int count;
+        elementType data[maxlen];
+};
+
+template <typename elementType>
+stack<elementType>::stack() {
+count = 0;
+}
+
+ template <typename elementType>
+ bool stack<elementType>::empty() {
+ if (count == 0)
+        return true;
+        return false;
+ }
+
+ template <typename elementType>
+ bool stack<elementType>::full() {
+     if (count == maxlen)
+            return true;
+       return false;
+}
+
+template <typename elementType>
+bool stack<elementType>::get_top(elementType &x) {
+        if (!empty()) {
+            x = data[count - 1];
+            return true;
+        }
+        return false;
+}
+
+template <typename elementType>
+bool stack<elementType>::push(elementType x) {
+        if (!full()) {
+            data[count++] = x;
+            return true;
+        }
+        return false;
+}
+
+template <typename elementType>
+bool stack<elementType>::pop() {
+        if (!empty()) {
+            --count;
+            return true;
+        }
+        return false;
+}
+#define N_OPTR 9
+typedef enum { ADD, SUB, MUL, DIV, POW, FAC, L_P, R_P, EOE } Operator;
+
+const char pri[N_OPTR][N_OPTR] = {
+   /*              +      -      *      /      ^      !      (      )      \0 */
+   /*   + */    '>',   '>',   '<',   '<',   '<',   '<',   '<',   '>',   '>',
+   /*   - */    '>',   '>',   '<',   '<',   '<',   '<',   '<',   '>',   '>',
+   /*   * */    '>',   '>',   '>',   '>',   '<',   '<',   '<',   '>',   '>',
+   /*   / */    '>',   '>',   '>',   '>',   '<',   '<',   '<',   '>',   '>',
+   /*   ^ */    '>',   '>',   '>',   '>',   '>',   '<',   '<',   '>',   '>',
+   /*   ! */    '>',   '>',   '>',   '>',   '>',   '>',   ' ',   '>',   '>',
+   /*   ( */    '<',   '<',   '<',   '<',   '<',   '<',   '<',   '=',   ' ',
+   /*   ) */    ' ',   ' ',   ' ',   ' ',   ' ',   ' ',   ' ',   ' ',   ' ',
+   /*  \0 */    '<',   '<',   '<',   '<',   '<',   '<',   '<',   ' ',   '='
+};
+
+int fac(int x)
+{
+    register int i,f=1;
+
+    for(i=1;i<=x;i++)
+        f*=i;
+
+    return f;
+}
+
+Operator optr2rank (char op)
+{
+	switch(op){
+	case '+' :return ADD;
+	case '-' :return SUB;
+	case '*' :return MUL;
+	case '/' :return DIV;
+	case '^' :return POW;
+	case '!' :return FAC;
+	case '(' :return L_P;
+	case ')' :return R_P;
+	case '\0':return EOE;
+	default  :exit(-1);
+	}
+}
+
+char orderBetween(char op1,char op2)
+{	return pri[optr2rank(op1)][optr2rank(op2)];}
+bool isnumber(char x) {
+    if (x >= '0' && x <= '9')
+        return true;
+    return false;
+}
+void append ( char*& rpn, float opnd ) {
+   int n = strlen ( rpn );
+   char buf[64];
+   if ( opnd != ( float ) ( int ) opnd ) sprintf ( buf, "%.2f \0", opnd );
+   else                          sprintf ( buf, "%d \0", ( int ) opnd );
+   rpn = ( char* ) realloc ( rpn, sizeof ( char ) * ( n + strlen ( buf ) + 1 ) );
+   strcat ( rpn, buf ); //RPN加长
+}
+
+void append ( char*& rpn, char optr ) {
+   int n = strlen ( rpn );
+   rpn = ( char* ) realloc ( rpn, sizeof ( char ) * ( n + 3 ) );
+   sprintf ( rpn + n, "%c ", optr ); rpn[n + 2] = '\0';
+}
+
+void readNumber(char *& p ,stack<float>& stk)
+{
+	stk.push((float)(*p-'0'));
+	while (isdigit(*(++p)))
+	{
+		stk.push(stk.pop()*10+(*p-'0'));
+	}
+	float fraction=1;
+	if(*p!='.')return;
+	while(isdigit(*(++p)))
+	{
+		stk.push(stk.pop()+(*p-'0')*(fraction /= 10));
+	}
+}
+float calcu(char op,float b)
+{
+	switch(op){
+	case '!': return (float)fac((int)b);
+	default : exit(-1);
+    }
+}
+float calcu(float a,char op,float b)
+{
+	switch(op){
+	case '+':return a+b;
+	case '-':return a-b;
+	case '*':return a*b;
+	case '/':return a/b;
+	case '^':return pow(a,b);
+	default: exit(-1);
+	}
+}
+float evaluate(char *S,char *& RPN)
+{
+	stack<float>number;
+	stack<char>optr;
+	optr.push('/0');
+	while(!optr.empty())
+	{
+		if(isdigit(*S))
+		{
+			readNumber(S,number);
+			append(RPN,*S);
+		}
+		else
+		{
+			char temp;
+			optr.get_top(temp);
+			switch(orderBetween(temp,*S))
+			{case '=':
+				S++;optr.pop();
+				break;
+			case '<':
+				optr.push(*S);S++;
+				break;
+			case '>':
+				{
+					char opp;
+					optr.get_top(opp);
+					optr.pop();
+					append(RPN,opp);
+					if(opp=='!')
+					{
+						float num1;
+						number.get_top(num1);
+						number.pop();
+						number.push(calcu(opp,num1));
+					}
+					else{
+						float num1,num2;
+						number.get_top(num2);
+						number.get_top(num1);
+						number.pop();
+						number.pop();
+						number.push(calcu(num1,opp,num2));
+					}
+					break;
+				}
+			default : exit(-1);
+			}
+		}
+	}
+	float result;
+	number.get_top(result);
+	number.pop();
+	return result;
+}
+int main() { //表达式求值（入口）
+	  char expression[100];
+	  cin>>expression;
+      char* rpn = ( char* ) malloc ( sizeof ( char ) * 1 );   rpn[0] = '\0';
+      float value = evaluate ( expression, rpn );
+      cout<<value<<endl;
+      cout<<rpn;
+      return 0;
+}
